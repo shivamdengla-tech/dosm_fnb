@@ -1,4 +1,5 @@
 import { Menu, LogOut } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { APP_NAME } from '../constants'
 
@@ -13,17 +14,38 @@ function initials(name = '') {
   )
 }
 
+const TITLES = {
+  '/admin': 'Dashboard',
+  '/admin/companies': 'All Companies',
+  '/admin/allocations': 'Allocations',
+  '/admin/team': 'Team',
+  '/admin/add-company': 'Add Company',
+  '/admin/progress': 'Progress Board',
+  '/admin/settings': 'Settings',
+  '/dashboard': 'My Dashboard',
+  '/dashboard/companies': 'My Companies',
+  '/dashboard/add-company': 'Add Company',
+  '/dashboard/settings': 'Settings',
+}
+
+function titleFor(pathname) {
+  if (TITLES[pathname]) return TITLES[pathname]
+  if (pathname.includes('/company/')) return 'Company Detail'
+  return APP_NAME
+}
+
 export default function Topbar({ onMenu }) {
   const { profile, signOut } = useAuth()
+  const { pathname } = useLocation()
   const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'long',
+    weekday: 'short',
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
   })
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-bg/50 px-4 backdrop-blur-xl sm:px-6">
       <button
         onClick={onMenu}
         className="text-muted md:hidden"
@@ -32,16 +54,16 @@ export default function Topbar({ onMenu }) {
         <Menu size={22} />
       </button>
 
-      <div className="min-w-0">
-        <p className="truncate text-sm font-bold text-ink sm:text-base">
-          {APP_NAME}
-        </p>
-        <p className="hidden text-xs text-muted sm:block">{today}</p>
-      </div>
+      <p className="min-w-0 truncate text-base font-bold text-ink sm:text-lg">
+        {titleFor(pathname)}
+      </p>
 
       <div className="ml-auto flex items-center gap-3">
+        <span className="hidden rounded-full border border-border bg-white/5 px-3 py-1.5 text-xs font-medium text-muted sm:inline-block">
+          {today}
+        </span>
         <div className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-xs font-bold text-accent">
+          <span className="grid h-9 w-9 place-items-center rounded-full gradient-accent text-xs font-bold text-white">
             {initials(profile?.full_name)}
           </span>
           <div className="hidden text-right leading-tight sm:block">
@@ -53,7 +75,7 @@ export default function Topbar({ onMenu }) {
         </div>
         <button
           onClick={signOut}
-          className="grid h-9 w-9 place-items-center rounded-xl text-muted transition-colors hover:bg-black/5 hover:text-red-600"
+          className="grid h-9 w-9 place-items-center rounded-xl text-muted transition-colors hover:bg-white/5 hover:text-red-400"
           title="Log out"
           aria-label="Log out"
         >

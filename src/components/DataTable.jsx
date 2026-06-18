@@ -56,7 +56,7 @@ export default function DataTable({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-ink placeholder:text-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-ring"
+            className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-ink placeholder:text-muted/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-ring transition-all duration-200"
           />
         </div>
         {filters.map((f) => (
@@ -100,8 +100,8 @@ export default function DataTable({
                 <tr
                   key={row.id ?? i}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={`border-b border-border/70 last:border-0 ${
-                    onRowClick ? 'cursor-pointer hover:bg-accent-soft/40' : ''
+                  className={`border-b border-border/60 transition-colors last:border-0 even:bg-white/[0.02] ${
+                    onRowClick ? 'cursor-pointer hover:bg-accent-soft' : ''
                   }`}
                 >
                   {columns.map((c) => (

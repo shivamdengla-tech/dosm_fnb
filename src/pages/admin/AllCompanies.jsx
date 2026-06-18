@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { fetchBrandRows } from '../../lib/data'
@@ -21,6 +22,7 @@ const FEST_TAGS = ['All', 'Spree']
 const blankForm = { name: '', category: CATEGORIES[0], fest_tag: 'All' }
 
 export default function AllCompanies() {
+  const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -101,7 +103,18 @@ export default function AllCompanies() {
     {
       key: 'name',
       header: 'Company',
-      render: (r) => <span className="font-semibold text-ink">{r.name}</span>,
+      render: (r) =>
+        r.allocated ? (
+          <button
+            onClick={() => navigate(`/admin/company/${r.allocationId}`)}
+            className="font-semibold text-ink transition-colors hover:text-indigo-300 hover:underline"
+            title="Open company detail"
+          >
+            {r.name}
+          </button>
+        ) : (
+          <span className="font-semibold text-ink">{r.name}</span>
+        ),
     },
     { key: 'category', header: 'Category', className: 'text-muted' },
     {
@@ -139,7 +152,7 @@ export default function AllCompanies() {
           </button>
           <button
             onClick={() => remove(r)}
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-red-50 hover:text-red-600"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-red-500/15 hover:text-red-400"
             title="Delete"
           >
             <Trash2 size={15} />

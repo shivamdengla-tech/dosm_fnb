@@ -1,24 +1,31 @@
 @import 'tailwindcss';
 
-/* ---- DOSM FnB design tokens (Tailwind v4 @theme) ---- */
+/* ---- DOSM FnB design tokens — dark / glassmorphism (Tailwind v4 @theme) ---- */
 @theme {
-  --color-bg: #f8f9fa;
-  --color-surface: #ffffff;
-  --color-border: #ececf1;
+  --color-bg: #0a0f1e;
+  --color-surface: rgba(17, 24, 39, 0.8);
+  --color-surface-solid: #111827;
+  --color-border: rgba(255, 255, 255, 0.08);
 
-  /* Violet accent with personality */
-  --color-accent: #7c3aed;
-  --color-accent-hover: #6d28d9;
-  --color-accent-soft: #f3effe;
-  --color-accent-ring: rgba(124, 58, 237, 0.35);
+  /* Electric indigo / purple / blue accents */
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  --color-secondary: #8b5cf6;
+  --color-glow: #3b82f6;
+  --color-accent-soft: rgba(99, 102, 241, 0.14);
+  --color-accent-ring: rgba(99, 102, 241, 0.45);
 
-  --color-ink: #1c1b22;
-  --color-muted: #6b7280;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  --color-ink: #f9fafb;
+  --color-muted: #9ca3af;
 
   --radius-card: 16px;
 
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
-  --shadow-soft: 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-card: 0 0 20px rgba(99, 102, 241, 0.1);
+  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.2);
 
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
@@ -42,18 +49,65 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Thin, tasteful scrollbars */
+/* ---- Reusable glass / glow / gradient utilities ---- */
+
+/* Frosted glass surface */
+@utility glass {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Indigo gradient fill (buttons, accents) */
+@utility gradient-accent {
+  background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+}
+
+/* Gradient text (logo, headings) */
+@utility text-gradient {
+  background-image: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Animated indigo→purple background for the greeting hero */
+@utility greeting-gradient {
+  background-image: linear-gradient(
+    120deg,
+    rgba(99, 102, 241, 0.35),
+    rgba(139, 92, 246, 0.25),
+    rgba(59, 130, 246, 0.3)
+  );
+  background-size: 200% 200%;
+  animation: gradient-shift 12s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Dark scrollbars */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d8d8e0;
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 999px;
   border: 2px solid var(--color-bg);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #c2c2cf;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Native select options render on solid dark (dropdown popup isn't glassy) */
+select option {
+  background: #111827;
+  color: #f9fafb;
 }
 
 /* Honour reduced-motion */

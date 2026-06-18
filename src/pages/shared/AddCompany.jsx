@@ -12,9 +12,11 @@ import {
   Field,
   Input,
   Select,
+  Modal,
 } from '../../components/ui'
 
 const FEST_TAGS = ['All', 'Spree']
+const NAME_RE = /^[A-Za-z0-9 &-]+$/
 
 export default function AddCompany() {
   const { user, isAdmin } = useAuth()
@@ -27,16 +29,33 @@ export default function AddCompany() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const spreeLocked = isSpreeOnly(category)
   // Keep the member's pursued fest valid for Spree-only categories.
   const effectiveFest = spreeLocked ? 'Spree' : fest
 
-  async function submit(e) {
+  function validate() {
+    const trimmed = name.trim()
+    if (trimmed.length < 3) return 'Name must be at least 3 characters.'
+    if (!NAME_RE.test(trimmed))
+      return 'Name may only contain letters, numbers, spaces, & and -.'
+    return ''
+  }
+
+  // Step 1: validate, then open the confirmation modal.
+  function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setDone('')
-    if (!name.trim()) return setError('Company name is required.')
+    const v = validate()
+    if (v) return setError(v)
+    setConfirmOpen(true)
+  }
+
+  // Step 2: actually persist after confirmation.
+  async function doSubmit() {
+    setConfirmOpen(false)
     setSaving(true)
 
     const { data: brand, error: brandErr } = await supabase
@@ -86,7 +105,7 @@ export default function AddCompany() {
       />
 
       <Card className="max-w-xl p-6">
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Field label="Company name">
             <Input
               value={name}
@@ -94,6 +113,9 @@ export default function AddCompany() {
               placeholder="e.g. Yoga Bar"
               autoFocus
             />
+            <span className="mt-1 block text-xs text-muted">
+              Min 3 characters · letters, numbers, spaces, &amp; and - only
+            </span>
           </Field>
 
           <Field label="Category">
@@ -142,6 +164,36 @@ export default function AddCompany() {
           </Button>
         </form>
       </Card>
+
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm new company">
+        <div className="space-y-3 text-sm">
+          <p className="text-muted">Add this company?</p>
+          <dl className="space-y-2 rounded-xl border border-border bg-white/[0.03] p-4">
+            <Row label="Name" value={name.trim()} />
+            <Row label="Category" value={category} />
+            <Row label="Fest tag" value={festTag} />
+            {!isAdmin && <Row label="Pursuing for" value={effectiveFest} />}
+            <Row label="Assignment" value={isAdmin ? 'Master list only' : 'Auto-assigned to you'} />
+          </dl>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={doSubmit}>
+              Confirm &amp; add
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+function Row({ label, value }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="text-muted">{label}</dt>
+      <dd className="font-medium text-ink">{value}</dd>
     </div>
   )
 }

@@ -19,8 +19,8 @@ export default defineConfig([
     },
   },
   {
-    // Node-only one-time seed script.
-    files: ['src/seed.js'],
+    // Node-only one-time scripts.
+    files: ['src/seed.js', 'src/createAdmin.js'],
     languageOptions: {
       globals: globals.node,
     },

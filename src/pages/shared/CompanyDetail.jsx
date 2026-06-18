@@ -6,7 +6,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import { fetchAllocation, fetchCallLogs } from '../../lib/data'
 import { STATUS_LABELS, DEFAULT_STATUS, getStatus } from '../../constants'
 import {
-  PageHeader,
   Card,
   CardTitle,
   Loading,
@@ -148,19 +147,30 @@ export default function CompanyDetail() {
     <div>
       <BackButton onClick={() => navigate(-1)} />
 
-      <PageHeader title={brand?.name} subtitle={brand?.category}>
-        <FestBadge fest={alloc.fest || brand?.fest_tag} />
-        <StatusBadge status={alloc.status || DEFAULT_STATUS} />
-      </PageHeader>
-
-      {isAdmin && (
-        <p className="-mt-3 mb-5 text-sm text-muted">
-          Assigned to{' '}
-          <span className="font-medium text-ink">
-            {alloc.profiles?.full_name || 'Unassigned'}
-          </span>
-        </p>
-      )}
+      {/* Hero */}
+      <Card className="mb-6 p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">{brand?.name}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted">{brand?.category}</span>
+              <FestBadge fest={alloc.fest || brand?.fest_tag} />
+            </div>
+            {isAdmin && (
+              <p className="mt-2 text-sm text-muted">
+                Assigned to{' '}
+                <span className="font-medium text-ink">
+                  {alloc.profiles?.full_name || 'Unassigned'}
+                </span>
+              </p>
+            )}
+          </div>
+          <StatusBadge
+            status={alloc.status || DEFAULT_STATUS}
+            className="px-3 py-1.5 text-sm"
+          />
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* Deal form */}
@@ -258,20 +268,18 @@ export default function CompanyDetail() {
               hint="Your first saved note will appear here."
             />
           ) : (
-            <ol className="relative space-y-5 before:absolute before:left-[7px] before:top-1 before:h-full before:w-px before:bg-border">
+            <div className="space-y-3">
               {logs.map((log) => (
-                <li key={log.id} className="relative pl-6">
-                  <span
-                    className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-surface"
-                    style={{ backgroundColor: getDot(log.status) }}
-                  />
+                <div
+                  key={log.id}
+                  className="rounded-xl border-l-2 bg-white/[0.03] p-3"
+                  style={{ borderLeftColor: getDot(log.status) }}
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={log.status} />
                     <span className="text-xs text-muted">{fmtDateTime(log.created_at)}</span>
                   </div>
-                  {log.notes && (
-                    <p className="mt-1.5 text-sm text-ink">{log.notes}</p>
-                  )}
+                  {log.notes && <p className="mt-1.5 text-sm text-ink">{log.notes}</p>}
                   {(log.poc_name || log.quantity || log.delivery_date) && (
                     <p className="mt-1 text-xs text-muted">
                       {[
@@ -283,9 +291,9 @@ export default function CompanyDetail() {
                         .join(' · ')}
                     </p>
                   )}
-                </li>
+                </div>
               ))}
-            </ol>
+            </div>
           )}
         </Card>
       </div>

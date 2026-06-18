@@ -141,17 +141,19 @@ export default function Team() {
             <Card key={p.id} className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-full bg-accent-soft text-sm font-bold text-accent">
+                  <span className="grid h-11 w-11 place-items-center rounded-full gradient-accent text-sm font-bold text-white shadow-[0_0_14px_rgba(99,102,241,0.4)]">
                     {p.full_name?.split(' ').slice(0, 2).map((x) => x[0]).join('').toUpperCase()}
                   </span>
                   <div>
                     <p className="font-semibold text-ink">{p.full_name}</p>
-                    <p className="text-xs capitalize text-muted">{p.role}</p>
+                    <span className="mt-0.5 inline-block rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium capitalize text-indigo-300">
+                      {p.role}
+                    </span>
                   </div>
                 </div>
                 <button
                   onClick={() => removeMember(p)}
-                  className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-red-50 hover:text-red-600"
+                  className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-red-500/15 hover:text-red-400"
                   title="Remove member"
                 >
                   <Trash2 size={16} />
@@ -215,7 +217,7 @@ export default function Team() {
 
 function Stat({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-xl bg-bg py-3">
+    <div className="rounded-xl bg-white/5 py-3">
       <Icon size={16} className="mx-auto mb-1 text-accent" />
       <p className="text-lg font-bold text-ink tabular-nums">{value}</p>
       <p className="text-[11px] text-muted">{label}</p>

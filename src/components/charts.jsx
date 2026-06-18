@@ -9,22 +9,25 @@ import {
   Tooltip,
   PieChart,
   Pie,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   Legend,
 } from 'recharts'
 import { EmptyState } from './ui'
 import { BarChart3 } from 'lucide-react'
 
-const ACCENT = '#7c3aed'
-const AXIS = '#9ca3af'
-const GRID = '#ececf1'
+const ACCENT = '#6366f1'
+const AXIS = '#64748b'
+const GRID = 'rgba(255,255,255,0.06)'
 
 const tooltipStyle = {
   borderRadius: 12,
-  border: '1px solid #ececf1',
-  boxShadow: '0 8px 24px rgba(16,24,40,0.08)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(17,24,39,0.95)',
+  backdropFilter: 'blur(8px)',
+  boxShadow: '0 0 24px rgba(99,102,241,0.25)',
   fontSize: 12,
+  color: '#f9fafb',
 }
 
 function NoData() {
@@ -54,7 +57,7 @@ export function CategoricalBar({ data, dataKey = 'count', height = 280 }) {
           tickLine={false}
           axisLine={false}
         />
-        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: '#f3effe' }} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(99,102,241,0.1)' }} />
         <Bar dataKey={dataKey} radius={[6, 6, 0, 0]} maxBarSize={48}>
           {data.map((d, i) => (
             <Cell key={i} fill={d.color || ACCENT} />
@@ -65,8 +68,54 @@ export function CategoricalBar({ data, dataKey = 'count', height = 280 }) {
   )
 }
 
-/** Donut with per-slice colours and a legend. */
-export function Donut({ data, height = 280 }) {
+/**
+ * Horizontal bars. Pass `colored` to use each datum's own `color`
+ * (e.g. status funnel); otherwise bars use the indigo gradient (leaderboard).
+ */
+export function HorizontalBar({ data, height = 280, colored = false }) {
+  if (!data?.length) return <NoData />
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
+      >
+        <defs>
+          <linearGradient id="barIndigo" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#6366f1" />
+            <stop offset="100%" stopColor="#8b5cf6" />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
+        <XAxis
+          type="number"
+          allowDecimals={false}
+          tick={{ fontSize: 11, fill: AXIS }}
+          tickLine={false}
+          axisLine={{ stroke: GRID }}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={110}
+          tick={{ fontSize: 11, fill: '#cbd5e1' }}
+          tickLine={false}
+          axisLine={false}
+        />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(99,102,241,0.08)' }} />
+        <Bar dataKey="count" radius={[0, 6, 6, 0]} maxBarSize={26}>
+          {data.map((d, i) => (
+            <Cell key={i} fill={colored ? d.color || ACCENT : 'url(#barIndigo)'} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+/** Donut with per-slice colours and a wrapping legend. */
+export function Donut({ data, height = 280, legend = true }) {
   if (!data?.length || data.every((d) => !d.value)) return <NoData />
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -87,21 +136,29 @@ export function Donut({ data, height = 280 }) {
           ))}
         </Pie>
         <Tooltip contentStyle={tooltipStyle} />
-        <Legend
-          iconType="circle"
-          wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-        />
+        {legend && (
+          <Legend
+            iconType="circle"
+            wrapperStyle={{ fontSize: 12, paddingTop: 8, color: '#cbd5e1' }}
+          />
+        )}
       </PieChart>
     </ResponsiveContainer>
   )
 }
 
-/** Time-series line (e.g. calls per day). */
-export function TrendLine({ data, color = ACCENT, height = 280 }) {
+/** Filled area trend (calls per day) with indigo→purple gradient + glow line. */
+export function AreaTrend({ data, height = 280 }) {
   if (!data?.length) return <NoData />
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: -16 }}>
+      <AreaChart data={data} margin={{ top: 10, right: 14, bottom: 4, left: -16 }}>
+        <defs>
+          <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.5} />
+            <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
         <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
         <XAxis
           dataKey="label"
@@ -116,16 +173,67 @@ export function TrendLine({ data, color = ACCENT, height = 280 }) {
           tickLine={false}
           axisLine={false}
         />
-        <Tooltip contentStyle={tooltipStyle} />
-        <Line
+        <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: 'rgba(99,102,241,0.4)' }} />
+        <Area
           type="monotone"
           dataKey="count"
-          stroke={color}
+          stroke="#818cf8"
           strokeWidth={2.5}
-          dot={{ r: 3, fill: color }}
-          activeDot={{ r: 5 }}
+          fill="url(#areaFill)"
+          dot={false}
+          activeDot={{ r: 5, fill: '#a5b4fc' }}
+          style={{ filter: 'drop-shadow(0 2px 8px rgba(99,102,241,0.5))' }}
         />
-      </LineChart>
+      </AreaChart>
     </ResponsiveContainer>
+  )
+}
+
+/** Circular progress ring with a gradient stroke and centred %. */
+export function CompletionRing({ value = 0, size = 190, label }) {
+  const stroke = 16
+  const r = (size - stroke) / 2
+  const circ = 2 * Math.PI * r
+  const offset = circ * (1 - Math.min(100, Math.max(0, value)) / 100)
+  return (
+    <div className="flex flex-col items-center justify-center py-2">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          <defs>
+            <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#6366f1" />
+              <stop offset="100%" stopColor="#8b5cf6" />
+            </linearGradient>
+          </defs>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth={stroke}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke="url(#ringGrad)"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            style={{
+              transition: 'stroke-dashoffset 700ms ease',
+              filter: 'drop-shadow(0 0 8px rgba(99,102,241,0.6))',
+            }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-4xl font-extrabold text-ink tabular-nums">{value}%</span>
+        </div>
+      </div>
+      {label && <p className="mt-3 text-sm text-muted">{label}</p>}
+    </div>
   )
 }

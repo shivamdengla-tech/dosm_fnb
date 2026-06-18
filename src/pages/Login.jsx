@@ -33,18 +33,26 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
-      <div className="flex flex-1 items-center justify-center px-4 py-12">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-bg">
+      {/* Ambient glow backdrop */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(60% 50% at 50% 0%, rgba(99,102,241,0.18), transparent 70%), radial-gradient(40% 40% at 80% 100%, rgba(139,92,246,0.14), transparent 70%)',
+        }}
+      />
+      <div className="relative flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
-            <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent text-xl font-extrabold text-white shadow-card">
+            <span className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl gradient-accent text-xl font-extrabold text-white shadow-[0_0_30px_rgba(99,102,241,0.6)]">
               D
             </span>
-            <h1 className="text-2xl font-extrabold text-ink">{APP_NAME}</h1>
+            <h1 className="text-gradient text-2xl font-extrabold">{APP_NAME}</h1>
             <p className="mt-1 text-sm text-muted">{APP_SUBTITLE}</p>
           </div>
 
-          <div className="rounded-card border border-border bg-surface p-6 shadow-card sm:p-8">
+          <div className="glass rounded-card p-6 shadow-glow sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-4">
               <label className="block">
                 <span className="mb-1.5 block text-xs font-medium text-muted">

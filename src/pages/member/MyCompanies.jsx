@@ -58,15 +58,17 @@ export default function MyCompanies() {
           {grouped.map(([category, brands]) => (
             <section key={category}>
               <div className="mb-3 flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-ink">{category}</h2>
-                <span className="rounded-full bg-bg px-2 py-0.5 text-xs font-medium text-muted">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-indigo-300">
+                  {category}
+                </h2>
+                <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs font-medium text-muted">
                   {brands.length}
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {brands.map((b) => (
                   <Link key={b.allocationId} to={`/dashboard/company/${b.allocationId}`}>
-                    <Card className="group p-5 transition-shadow hover:shadow-lg">
+                    <Card className="group p-5 hover:-translate-y-0.5 hover:shadow-glow">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold text-ink">{b.name}</h3>
                         <ChevronRight

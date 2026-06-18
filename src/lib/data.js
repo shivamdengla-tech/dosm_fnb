@@ -92,7 +92,7 @@ export async function fetchRecentCallLogs({ memberId = null, days = 14 } = {}) {
 
   let query = supabase
     .from('call_logs')
-    .select('id, member_id, status, created_at')
+    .select('id, member_id, status, created_at, allocation_id')
     .gte('created_at', since.toISOString())
   if (memberId) query = query.eq('member_id', memberId)
 

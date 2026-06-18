@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { fetchBrandRows } from '../../lib/data'
-import { CATEGORIES, STATUS_LABELS, FESTS } from '../../constants'
+import { CATEGORIES, STATUSES, FESTS } from '../../constants'
 import {
   PageHeader,
   Loading,
@@ -20,10 +21,14 @@ function fmt(ts) {
   })
 }
 
+const effectiveStatus = (r) => (r.allocated ? r.status : 'Not Started')
+
 export default function ProgressBoard() {
+  const navigate = useNavigate()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
     async function load() {
@@ -56,6 +61,14 @@ export default function ProgressBoard() {
     load()
   }, [])
 
+  const shown = useMemo(
+    () =>
+      statusFilter === 'all'
+        ? rows
+        : rows.filter((r) => effectiveStatus(r) === statusFilter),
+    [rows, statusFilter],
+  )
+
   if (loading) return <Loading />
 
   const memberOptions = [...new Set(rows.map((r) => r.memberName).filter(Boolean))].sort()
@@ -71,13 +84,12 @@ export default function ProgressBoard() {
     {
       key: 'member',
       header: 'Member',
-      render: (r) =>
-        r.memberName || <span className="text-muted">— Unassigned</span>,
+      render: (r) => r.memberName || <span className="text-muted">— Unassigned</span>,
     },
     {
       key: 'status',
       header: 'Status',
-      render: (r) => <StatusBadge status={r.allocated ? r.status : 'Not Started'} />,
+      render: (r) => <StatusBadge status={effectiveStatus(r)} />,
     },
     {
       key: 'lastUpdated',
@@ -91,12 +103,6 @@ export default function ProgressBoard() {
     { key: 'category', label: 'Category', options: CATEGORIES, value: (r) => r.category },
     { key: 'fest', label: 'Fest', options: [...FESTS, 'All'], value: (r) => r.fest || r.festTag },
     {
-      key: 'status',
-      label: 'Status',
-      options: STATUS_LABELS,
-      value: (r) => (r.allocated ? r.status : 'Not Started'),
-    },
-    {
       key: 'member',
       label: 'Member',
       options: [...memberOptions, 'Unassigned'],
@@ -104,16 +110,49 @@ export default function ProgressBoard() {
     },
   ]
 
+  // Pills: "All" + each pipeline status.
+  const pills = [{ label: 'All', value: 'all', color: '#6366f1' }, ...STATUSES.map((s) => ({ label: s.label, value: s.label, color: s.color }))]
+
   return (
     <div>
       <PageHeader title="Progress Board" subtitle="Live status of every brand across the team" />
       {error && <Banner kind="error">{error}</Banner>}
+
+      {/* Status filter pills */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {pills.map((p) => {
+          const active = statusFilter === p.value
+          return (
+            <button
+              key={p.value}
+              onClick={() => setStatusFilter(p.value)}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200"
+              style={
+                active
+                  ? {
+                      backgroundColor: `${p.color}26`,
+                      color: p.color,
+                      boxShadow: `0 0 14px ${p.color}66`,
+                    }
+                  : {
+                      backgroundColor: 'rgba(255,255,255,0.04)',
+                      color: '#9ca3af',
+                    }
+              }
+            >
+              {p.label}
+            </button>
+          )
+        })}
+      </div>
+
       <DataTable
         columns={columns}
-        rows={rows}
+        rows={shown}
         searchKeys={['name', 'category', 'memberName']}
         filters={filters}
         searchPlaceholder="Search the board…"
+        onRowClick={(r) => r.allocationId && navigate(`/admin/company/${r.allocationId}`)}
       />
     </div>
   )

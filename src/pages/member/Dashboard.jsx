@@ -3,10 +3,17 @@ import { Briefcase, Phone, CheckCircle2, Clock } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { fetchMyAllocations, fetchRecentCallLogs, callsPerDay } from '../../lib/data'
 import { STATUSES } from '../../constants'
-import { PageHeader, StatTile, Card, CardTitle, Loading, Banner } from '../../components/ui'
-import { Donut, CategoricalBar } from '../../components/charts'
+import { StatTile, Card, CardTitle, Loading, Banner } from '../../components/ui'
+import { Donut, AreaTrend, CompletionRing } from '../../components/charts'
 
 const CONFIRMED_PLUS = ['Confirmed', 'MOU Sent', 'MOU Signed']
+
+function greetingWord() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
 
 export default function MemberDashboard() {
   const { user, profile } = useAuth()
@@ -52,56 +59,63 @@ export default function MemberDashboard() {
     [mine],
   )
 
-  const callsData = useMemo(
-    () => callsPerDay(logs, 14).map((d) => ({ name: d.label, count: d.count })),
-    [logs],
-  )
+  const callsData = useMemo(() => callsPerDay(logs, 14), [logs])
 
   if (loading) return <Loading />
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there'
+  const today = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
 
   return (
-    <div>
-      <PageHeader
-        title={`Hi, ${firstName} 👋`}
-        subtitle="Your brand pipeline at a glance"
-      />
+    <div className="space-y-6">
       {error && <Banner kind="error">{error}</Banner>}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="My Brands" value={stats.total} icon={Briefcase} accent />
-        <StatTile label="Called" value={stats.called} icon={Phone} />
-        <StatTile label="Confirmed" value={stats.confirmed} icon={CheckCircle2} />
-        <StatTile label="Pending" value={stats.pending} icon={Clock} />
-      </div>
-
-      <Card className="mt-6 p-5">
-        <CardTitle>Contacted</CardTitle>
-        <div className="flex items-center gap-4">
-          <div className="h-3 flex-1 overflow-hidden rounded-full bg-bg">
-            <div
-              className="h-full rounded-full bg-accent transition-all duration-500"
-              style={{ width: `${stats.pct}%` }}
-            />
+      {/* Row 1 — Greeting */}
+      <Card className="greeting-gradient relative overflow-hidden p-6 sm:p-8">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-extrabold text-white sm:text-3xl">
+              {greetingWord()}, {firstName} 👋
+            </h1>
+            <p className="mt-1 text-sm text-indigo-100/80">Your brand pipeline at a glance</p>
           </div>
-          <span className="text-sm font-bold text-ink tabular-nums">{stats.pct}%</span>
+          <span className="text-sm font-medium text-indigo-100/70">{today}</span>
         </div>
-        <p className="mt-2 text-xs text-muted">
-          {stats.called} of {stats.total} brands contacted at least once.
-        </p>
       </Card>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Row 2 — Stat tiles */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile label="My Brands" value={stats.total} icon={Briefcase} glow="#6366f1" />
+        <StatTile label="Called" value={stats.called} icon={Phone} glow="#3b82f6" />
+        <StatTile label="Confirmed" value={stats.confirmed} icon={CheckCircle2} glow="#10b981" />
+        <StatTile label="Pending" value={stats.pending} icon={Clock} glow="#f59e0b" />
+      </div>
+
+      {/* Row 3 — Completion ring + status donut */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card className="flex flex-col items-center justify-center p-5">
+          <CardTitle>Contacted</CardTitle>
+          <CompletionRing
+            value={stats.pct}
+            label={`${stats.called} of ${stats.total} brands contacted`}
+          />
+        </Card>
+
         <Card className="p-5">
           <CardTitle>My brands by status</CardTitle>
           <Donut data={statusData} />
         </Card>
-        <Card className="p-5">
-          <CardTitle>My calls per day — last 14 days</CardTitle>
-          <CategoricalBar data={callsData} />
-        </Card>
       </div>
+
+      {/* Row 4 — Calls per day */}
+      <Card className="p-5">
+        <CardTitle>My calls per day — last 14 days</CardTitle>
+        <AreaTrend data={callsData} height={280} />
+      </Card>
     </div>
   )
 }
