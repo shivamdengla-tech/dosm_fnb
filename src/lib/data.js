@@ -191,6 +191,18 @@ export async function logCall({
   if (allocErr) throw allocErr
 }
 
+/**
+ * Set an allocation's pipeline status directly (no call-log snapshot).
+ * Used by the Kanban board for quick drag-to-change-status corrections.
+ */
+export async function updateAllocationStatus(allocationId, status) {
+  const { error } = await supabase
+    .from('allocations')
+    .update({ status })
+    .eq('id', allocationId)
+  if (error) throw error
+}
+
 // ---------------------------------------------------------------------------
 // Pure helpers
 // ---------------------------------------------------------------------------

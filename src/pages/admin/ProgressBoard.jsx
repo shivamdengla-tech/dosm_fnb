@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Table2, KanbanSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { fetchBrandRows, followUpState, daysSince } from '../../lib/data'
+import {
+  fetchBrandRows,
+  followUpState,
+  daysSince,
+  updateAllocationStatus,
+} from '../../lib/data'
+import { useToast } from '../../contexts/ToastContext'
 import { CATEGORIES, STATUSES, FESTS } from '../../constants'
 import {
   PageHeader,
@@ -12,6 +19,7 @@ import {
   SkeletonTable,
 } from '../../components/ui'
 import DataTable from '../../components/DataTable'
+import KanbanBoard from '../../components/KanbanBoard'
 
 function fmt(ts) {
   if (!ts) return '—'
@@ -41,10 +49,29 @@ function FollowUpCell({ row }) {
 
 export default function ProgressBoard() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [view, setView] = useState('table') // 'table' | 'board'
+
+  // Optimistic drag-to-change-status on the Kanban board.
+  async function moveStatus(row, newStatus) {
+    const prev = row.status
+    setRows((rs) =>
+      rs.map((r) => (r.allocationId === row.allocationId ? { ...r, status: newStatus } : r)),
+    )
+    toast.success(`${row.name} → ${newStatus}`)
+    try {
+      await updateAllocationStatus(row.allocationId, newStatus)
+    } catch (e) {
+      setRows((rs) =>
+        rs.map((r) => (r.allocationId === row.allocationId ? { ...r, status: prev } : r)),
+      )
+      toast.error(`Couldn't update: ${e.message}`)
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -148,9 +175,48 @@ export default function ProgressBoard() {
 
   return (
     <div>
-      <PageHeader title="Progress Board" subtitle="Live status of every brand across the team" />
+      <PageHeader title="Progress Board" subtitle="Live status of every brand across the team">
+        <div className="flex rounded-xl border border-border bg-white/5 p-1">
+          <button
+            onClick={() => setView('table')}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+              view === 'table' ? 'bg-accent-soft text-indigo-200' : 'text-muted hover:text-ink'
+            }`}
+          >
+            <Table2 size={15} /> Table
+          </button>
+          <button
+            onClick={() => setView('board')}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+              view === 'board' ? 'bg-accent-soft text-indigo-200' : 'text-muted hover:text-ink'
+            }`}
+          >
+            <KanbanSquare size={15} /> Board
+          </button>
+        </div>
+      </PageHeader>
       {error && <Banner kind="error">{error}</Banner>}
 
+      {view === 'board' ? (
+        <KanbanBoard rows={shown} onMove={moveStatus} />
+      ) : (
+        <ProgressTable
+          rows={shown}
+          columns={columns}
+          filters={filters}
+          pills={pills}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          navigate={navigate}
+        />
+      )}
+    </div>
+  )
+}
+
+function ProgressTable({ rows, columns, filters, pills, statusFilter, setStatusFilter, navigate }) {
+  return (
+    <>
       {/* Status filter pills */}
       <div className="mb-4 flex flex-wrap gap-2">
         {pills.map((p) => {
@@ -181,12 +247,12 @@ export default function ProgressBoard() {
 
       <DataTable
         columns={columns}
-        rows={shown}
+        rows={rows}
         searchKeys={['name', 'category', 'memberName']}
         filters={filters}
         searchPlaceholder="Search the board…"
         onRowClick={(r) => r.allocationId && navigate(`/admin/company/${r.allocationId}`)}
       />
-    </div>
+    </>
   )
 }
