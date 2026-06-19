@@ -21,7 +21,7 @@ import {
   SkeletonStats,
   SkeletonChart,
 } from '../../components/ui'
-import { HorizontalBar, AreaTrend } from '../../components/charts'
+import { HorizontalBar, AreaTrend, PipelineBar } from '../../components/charts'
 import { Activity } from 'lucide-react'
 
 const CONFIRMED_PLUS = ['Confirmed', 'MOU Sent', 'MOU Signed']
@@ -179,8 +179,8 @@ export default function AdminDashboard() {
       {/* Row 3 — Pipeline funnel + Fest readiness */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="p-5">
-          <CardTitle>Pipeline funnel</CardTitle>
-          <HorizontalBar data={pipelineData} colored height={340} />
+          <CardTitle>Pipeline</CardTitle>
+          <PipelineBar data={pipelineData} />
         </Card>
 
         <Card className="p-5">

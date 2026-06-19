@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { fetchBrandRows } from '../../lib/data'
+import { fetchBrandRows, followUpState, daysSince } from '../../lib/data'
 import { CATEGORIES, STATUSES, FESTS } from '../../constants'
 import {
   PageHeader,
   Banner,
   StatusBadge,
   FestBadge,
+  FollowUpBadge,
   SkeletonTable,
 } from '../../components/ui'
 import DataTable from '../../components/DataTable'
@@ -23,6 +24,21 @@ function fmt(ts) {
 
 const effectiveStatus = (r) => (r.allocated ? r.status : 'Not Started')
 
+/** Follow-up / "going cold" indicator for a board row. */
+function FollowUpCell({ row }) {
+  const state = followUpState(row.nextFollowUp)
+  if (state === 'overdue' || state === 'today') return <FollowUpBadge date={row.nextFollowUp} />
+  if (row.allocated && row.status === 'Follow Up' && daysSince(row.lastUpdated) >= 3) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-300">
+        Going cold
+      </span>
+    )
+  }
+  if (state === 'upcoming') return <FollowUpBadge date={row.nextFollowUp} showUpcoming />
+  return <span className="text-muted">—</span>
+}
+
 export default function ProgressBoard() {
   const navigate = useNavigate()
   const [rows, setRows] = useState([])
@@ -35,21 +51,26 @@ export default function ProgressBoard() {
       try {
         const [brandRows, { data: logs, error: logErr }] = await Promise.all([
           fetchBrandRows(),
+          // select('*') keeps this working before the next_follow_up migration.
           supabase
             .from('call_logs')
-            .select('allocation_id, created_at')
+            .select('*')
             .order('created_at', { ascending: false }),
         ])
         if (logErr) throw logErr
         // First seen per allocation_id is the latest (logs are desc-ordered).
         const lastUpdated = {}
+        const nextFollow = {}
         for (const l of logs || []) {
           if (!(l.allocation_id in lastUpdated)) lastUpdated[l.allocation_id] = l.created_at
+          if (!(l.allocation_id in nextFollow) && l.next_follow_up)
+            nextFollow[l.allocation_id] = l.next_follow_up
         }
         setRows(
           brandRows.map((r) => ({
             ...r,
             lastUpdated: r.allocationId ? lastUpdated[r.allocationId] || null : null,
+            nextFollowUp: r.allocationId ? nextFollow[r.allocationId] || null : null,
           })),
         )
       } catch (e) {
@@ -73,7 +94,7 @@ export default function ProgressBoard() {
     return (
       <div>
         <PageHeader title="Progress Board" subtitle="Live status of every brand across the team" />
-        <SkeletonTable rows={10} cols={6} />
+        <SkeletonTable rows={10} cols={7} />
       </div>
     )
   }
@@ -97,6 +118,11 @@ export default function ProgressBoard() {
       key: 'status',
       header: 'Status',
       render: (r) => <StatusBadge status={effectiveStatus(r)} />,
+    },
+    {
+      key: 'followUp',
+      header: 'Follow-up',
+      render: (r) => <FollowUpCell row={r} />,
     },
     {
       key: 'lastUpdated',

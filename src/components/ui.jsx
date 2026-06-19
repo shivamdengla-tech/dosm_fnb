@@ -1,5 +1,6 @@
 import { getStatus, FEST_META } from '../constants'
-import { X } from 'lucide-react'
+import { contactLinks, followUpState } from '../lib/data'
+import { X, Phone, MessageCircle, Mail, CalendarClock } from 'lucide-react'
 
 /** Page title + optional subtitle + right-aligned action slot. */
 export function PageHeader({ title, subtitle, children }) {
@@ -89,6 +90,92 @@ export function StatusBadge({ status, className = '' }) {
       {s.label}
     </span>
   )
+}
+
+/**
+ * One-tap contact actions for a POC: dial, WhatsApp, email.
+ * Renders only the links that are usable. Clicks don't bubble (so it can sit
+ * inside a clickable row/card without triggering navigation).
+ */
+export function ContactLinks({ phone, email, name, size = 18, className = '' }) {
+  const links = contactLinks({ phone, email })
+  if (!links.tel && !links.whatsapp && !links.email) return null
+  const who = name ? ` ${name}` : ''
+  const stop = (e) => e.stopPropagation()
+  const base =
+    'grid place-items-center rounded-lg border border-border bg-white/5 transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0'
+  const box = size >= 18 ? 'h-9 w-9' : 'h-8 w-8'
+  return (
+    <div className={`flex items-center gap-1.5 ${className}`}>
+      {links.tel && (
+        <a
+          href={links.tel}
+          onClick={stop}
+          title={`Call${who}`}
+          aria-label={`Call${who}`}
+          className={`${base} ${box} text-sky-300 hover:bg-sky-500/15 hover:text-sky-200`}
+        >
+          <Phone size={size - 2} />
+        </a>
+      )}
+      {links.whatsapp && (
+        <a
+          href={links.whatsapp}
+          onClick={stop}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`WhatsApp${who}`}
+          aria-label={`WhatsApp${who}`}
+          className={`${base} ${box} text-emerald-300 hover:bg-emerald-500/15 hover:text-emerald-200`}
+        >
+          <MessageCircle size={size - 2} />
+        </a>
+      )}
+      {links.email && (
+        <a
+          href={links.email}
+          onClick={stop}
+          title={`Email${who}`}
+          aria-label={`Email${who}`}
+          className={`${base} ${box} text-indigo-300 hover:bg-indigo-500/15 hover:text-indigo-200`}
+        >
+          <Mail size={size - 2} />
+        </a>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Amber (due today) / red (overdue) follow-up pill. Renders nothing when the
+ * follow-up is in the future or absent (unless `showUpcoming`).
+ */
+export function FollowUpBadge({ date, showUpcoming = false, className = '' }) {
+  const state = followUpState(date)
+  if (!state) return null
+  if (state === 'upcoming' && !showUpcoming) return null
+  const palette = {
+    overdue: { color: '#ef4444', label: 'Overdue' },
+    today: { color: '#f59e0b', label: 'Due today' },
+    upcoming: { color: '#9ca3af', label: fmtFollowUp(date) },
+  }[state]
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${className}`}
+      style={{
+        backgroundColor: `${palette.color}1f`,
+        color: palette.color,
+        boxShadow: state === 'overdue' ? `0 0 10px ${palette.color}55` : undefined,
+      }}
+    >
+      <CalendarClock size={12} />
+      {palette.label}
+    </span>
+  )
+}
+
+function fmtFollowUp(date) {
+  return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
 
 /** Coloured pill for a fest tag (Waves / Quark / Spree / All). */

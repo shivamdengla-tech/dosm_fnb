@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, MessageSquarePlus, Clock } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { fetchAllocation, fetchCallLogs } from '../../lib/data'
+import { useToast } from '../../contexts/ToastContext'
+import { fetchAllocation, fetchCallLogs, logCall } from '../../lib/data'
 import { STATUS_LABELS, DEFAULT_STATUS, getStatus } from '../../constants'
 import {
   Card,
@@ -17,6 +17,8 @@ import {
   Textarea,
   StatusBadge,
   FestBadge,
+  FollowUpBadge,
+  ContactLinks,
   EmptyState,
 } from '../../components/ui'
 
@@ -44,6 +46,7 @@ export default function CompanyDetail() {
   const { allocationId } = useParams()
   const navigate = useNavigate()
   const { user, isAdmin } = useAuth()
+  const toast = useToast()
 
   const [alloc, setAlloc] = useState(null)
   const [logs, setLogs] = useState([])
@@ -52,6 +55,7 @@ export default function CompanyDetail() {
 
   const [status, setStatus] = useState(DEFAULT_STATUS)
   const [deal, setDeal] = useState(blankDeal)
+  const [nextFollowUp, setNextFollowUp] = useState('')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState(null)
@@ -78,6 +82,8 @@ export default function CompanyDetail() {
           delivery_date: latest?.delivery_date || '',
           stall_space: latest?.stall_space || '',
         })
+        // Surface the latest scheduled follow-up (newest log carrying one).
+        setNextFollowUp(l.find((x) => x.next_follow_up)?.next_follow_up || '')
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -89,43 +95,26 @@ export default function CompanyDetail() {
     e.preventDefault()
     setSaveMsg(null)
     setSaving(true)
-
-    const qty =
-      deal.quantity === '' || deal.quantity === null
-        ? null
-        : Number(deal.quantity)
-
-    const logRow = {
-      allocation_id: allocationId,
-      member_id: alloc.member_id || user.id,
-      status,
-      notes: note.trim() || null,
-      poc_name: deal.poc_name.trim() || null,
-      poc_number: deal.poc_number.trim() || null,
-      poc_email: deal.poc_email.trim() || null,
-      quantity: Number.isNaN(qty) ? null : qty,
-      skus: deal.skus.trim() || null,
-      delivery_date: deal.delivery_date || null,
-      stall_space: deal.stall_space.trim() || null,
-    }
-
-    // 1) Append a timestamped snapshot to the call log.
-    const { error: logErr } = await supabase.from('call_logs').insert(logRow)
-    if (logErr) {
+    try {
+      // Appends a call_logs snapshot AND syncs allocations.status in one place.
+      await logCall({
+        allocationId,
+        memberId: alloc.member_id || user.id,
+        status,
+        notes: note,
+        nextFollowUp: nextFollowUp || null,
+        deal,
+      })
       setSaving(false)
-      return setSaveMsg({ kind: 'error', text: logErr.message })
+      setNote('')
+      setSaveMsg({ kind: 'success', text: 'Saved — call logged and status updated.' })
+      toast.success('Call logged & status updated')
+      load()
+    } catch (err) {
+      setSaving(false)
+      setSaveMsg({ kind: 'error', text: err.message })
+      toast.error(`Couldn't save: ${err.message}`)
     }
-    // 2) Keep the allocation's current status in sync (drives boards/charts).
-    const { error: allocErr } = await supabase
-      .from('allocations')
-      .update({ status })
-      .eq('id', allocationId)
-    setSaving(false)
-    if (allocErr) return setSaveMsg({ kind: 'error', text: allocErr.message })
-
-    setNote('')
-    setSaveMsg({ kind: 'success', text: 'Saved — call logged and status updated.' })
-    load()
   }
 
   if (loading) return <Loading />
@@ -164,11 +153,23 @@ export default function CompanyDetail() {
                 </span>
               </p>
             )}
+            {(deal.poc_number || deal.poc_email) && (
+              <div className="mt-3">
+                <ContactLinks
+                  phone={deal.poc_number}
+                  email={deal.poc_email}
+                  name={deal.poc_name}
+                />
+              </div>
+            )}
           </div>
-          <StatusBadge
-            status={alloc.status || DEFAULT_STATUS}
-            className="px-3 py-1.5 text-sm"
-          />
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <StatusBadge
+              status={alloc.status || DEFAULT_STATUS}
+              className="px-3 py-1.5 text-sm"
+            />
+            <FollowUpBadge date={nextFollowUp} showUpcoming />
+          </div>
         </div>
       </Card>
 
@@ -231,11 +232,18 @@ export default function CompanyDetail() {
                   placeholder="e.g. 3 flavours"
                 />
               </Field>
-              <Field label="Delivery date" className="sm:col-span-2">
+              <Field label="Delivery date">
                 <Input
                   type="date"
                   value={deal.delivery_date || ''}
                   onChange={(e) => setDeal({ ...deal, delivery_date: e.target.value })}
+                />
+              </Field>
+              <Field label="Next follow-up">
+                <Input
+                  type="date"
+                  value={nextFollowUp || ''}
+                  onChange={(e) => setNextFollowUp(e.target.value)}
                 />
               </Field>
             </div>
@@ -280,12 +288,13 @@ export default function CompanyDetail() {
                     <span className="text-xs text-muted">{fmtDateTime(log.created_at)}</span>
                   </div>
                   {log.notes && <p className="mt-1.5 text-sm text-ink">{log.notes}</p>}
-                  {(log.poc_name || log.quantity || log.delivery_date) && (
+                  {(log.poc_name || log.quantity || log.delivery_date || log.next_follow_up) && (
                     <p className="mt-1 text-xs text-muted">
                       {[
                         log.poc_name && `POC: ${log.poc_name}`,
                         log.quantity != null && `Qty: ${log.quantity}`,
                         log.delivery_date && `Delivery: ${log.delivery_date}`,
+                        log.next_follow_up && `Follow-up: ${log.next_follow_up}`,
                       ]
                         .filter(Boolean)
                         .join(' · ')}
