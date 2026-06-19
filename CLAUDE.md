@@ -43,16 +43,18 @@ src/
     DataTable.jsx      searchable + multi-filter table
     LogCallSheet.jsx   fast modal to log a call outcome (+ optional follow-up) anywhere
     KanbanBoard.jsx    drag-to-change-status pipeline board (Progress Board "Board" view)
-    CommandPalette.jsx ⌘K / Ctrl+K jump-to-company / jump-to-page (admin)
+    CommandPalette.jsx ⌘K / Ctrl+K jump-to-company / jump-to-page + inline status-change (admin)
     BottomNav.jsx      mobile tab bar for members (md:hidden)
     Sidebar / Topbar / Layout / Footer / ProtectedRoute
+                       Layout enables BottomNav (members) + CommandPalette (admin) via props
   pages/
     Login.jsx
-    admin/    Dashboard, AllCompanies, Allocations, Team, ProgressBoard
-    member/   Dashboard, MyCompanies
+    admin/    Dashboard, AllCompanies, Allocations, Team, ProgressBoard (Table + Kanban)
+    member/   Dashboard (Up Next queue), MyCompanies
     shared/   AddCompany (role-aware), Settings, CompanyDetail
   seed.js              Node: one-time seed of 270 brands from brands.csv (service-role key)
   createAdmin.js       Node: create/promote an admin (service-role key)
+migrations/            hand-run .sql schema changes (e.g. 0001_add_next_follow_up.sql)
 brands.csv             seed data (name, category, fest_tag) — 270 rows
 ```
 
@@ -85,10 +87,10 @@ Not Started · First Call Done · Follow Up · Unresponsive · Denied · Confirm
 | `/admin/allocations` | admin | Allocations (assign/reassign inline) |
 | `/admin/team` | admin | Team (member stats, add/remove member) |
 | `/admin/add-company` | admin | Add Company (master list only) |
-| `/admin/progress` | admin | Progress Board (status filter pills, click row → detail) |
+| `/admin/progress` | admin | Progress Board (Table + Kanban "Board" toggle, status pills, follow-up/going-cold flags, click row → detail) |
 | `/admin/settings` | admin | Settings |
 | `/admin/company/:allocationId` | admin | Company Detail |
-| `/dashboard` | member | Dashboard (index) |
+| `/dashboard` | member | Dashboard (index — "Up Next" call queue + stats; bottom tab nav on mobile) |
 | `/dashboard/companies` | member | My Companies (cards grouped by category) |
 | `/dashboard/add-company` | member | Add Company (auto-allocates to self) |
 | `/dashboard/settings` | member | Settings |
@@ -122,26 +124,30 @@ is the server-side backstop. Never weaken RLS to fix a query — fix the query.
    updates `allocations.status` (so boards/charts stay in sync). The Kanban board's drag-to-change-status
    is the one exception: it calls `updateAllocationStatus()` (status only, no snapshot) as a quick admin
    correction. Un-allocated brands render as "Not Started / Untouched".
-7. **Follow-ups drive action.** Each call snapshot can carry `next_follow_up`; the latest one per
+2. **Follow-ups drive action.** Each call snapshot can carry `next_follow_up`; the latest one per
    allocation surfaces as a `FollowUpBadge` (amber = due today, red = overdue). `buildCallQueue()` powers
    the member "Up Next" list — due/overdue → "going cold" (in Follow Up, untouched 3+ days) → untouched —
    and the admin Progress Board flags the same signals.
-8. **Toasts + optimistic UI.** Writes (log call, Kanban move, settings) update local state immediately and
-   confirm with a toast (`useToast()`); failures revert and surface an error toast.
-2. **`flattenBrand` (lib/data.js)** collapses a brand + its allocations into one display row carrying
+3. **Toasts + optimistic UI.** Writes (log call, Kanban move, palette status-change, settings) update
+   local state immediately and confirm with a toast (`useToast()`); failures revert and surface an error toast.
+4. **`flattenBrand` (lib/data.js)** collapses a brand + its allocations into one display row carrying
    its primary allocation (`allocationId`, `fest`, `status`, `memberName`). Used across admin tables.
-3. **Member creation is client-side and session-isolated.** `makeIsolatedClient()` (persistSession
+5. **Member creation is client-side and session-isolated.** `makeIsolatedClient()` (persistSession
    off) calls `signUp` so the admin's session isn't replaced, then upserts the `profiles` row. A true
    admin-invite API would need an Edge Function (out of scope). Deleting an auth login must be done in
    the Supabase dashboard — the app only removes the profile + allocations.
-4. **Spree-only categories** (`Healthy Snacking`, `Makhana`, `Protein & Nutrition`) can only be
+6. **Spree-only categories** (`Healthy Snacking`, `Makhana`, `Protein & Nutrition`) can only be
    allocated to the **Spree** fest — enforced in Allocations and the member Add Company form.
-5. **Theme is token-driven.** All colours/radii/shadows are `@theme` tokens in `index.css`; components
+7. **Theme is token-driven.** All colours/radii/shadows are `@theme` tokens in `index.css`; components
    use utility classes (`bg-surface`, `text-ink`, `shadow-glow`, `glass`, `gradient-accent`, …).
    Re-skinning = edit tokens, not every component. Status/fest badge colours come from `constants.js`
    and are applied inline (dynamic, so not Tailwind classes).
-6. **Secrets:** `VITE_*` keys are public (bundled). The **service-role key must never be `VITE_`-prefixed
+8. **Secrets:** `VITE_*` keys are public (bundled). The **service-role key must never be `VITE_`-prefixed
    or committed** — it lives in `.env.local` (gitignored) and is read only by the Node scripts.
+9. **Responsive app shell.** Desktop uses a hover-expand sidebar rail that **pushes** content via a
+   `peer-hover` padding shift on the main column (never overlays it). Members get a fixed `BottomNav`
+   tab bar on small screens (≥44px targets); admins get the ⌘K `CommandPalette`. Loading states use the
+   `Skeleton*` primitives so "loading" never looks like "empty".
 
 ## Run locally
 
