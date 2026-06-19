@@ -36,10 +36,10 @@ const adminNav = [
 ]
 
 const memberNav = [
-  { to: '/dashboard', label: 'My Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/dashboard/companies', label: 'My Companies', icon: Building2 },
-  { to: '/dashboard/add-company', label: 'Add Company', icon: PlusCircle },
-  { to: '/dashboard/settings', label: 'Settings', icon: SettingsIcon },
+  { to: '/dashboard', label: 'My Dashboard', short: 'Home', icon: LayoutDashboard, end: true },
+  { to: '/dashboard/companies', label: 'My Companies', short: 'Brands', icon: Building2 },
+  { to: '/dashboard/add-company', label: 'Add Company', short: 'Add', icon: PlusCircle },
+  { to: '/dashboard/settings', label: 'Settings', short: 'Settings', icon: SettingsIcon },
 ]
 
 /** Send "/" to the right home based on the signed-in role. */
@@ -66,7 +66,7 @@ export default function App() {
         path="/admin"
         element={
           <ProtectedRoute role="admin">
-            <Layout navItems={adminNav} />
+            <Layout navItems={adminNav} commandPalette />
           </ProtectedRoute>
         }
       >
@@ -85,7 +85,7 @@ export default function App() {
         path="/dashboard"
         element={
           <ProtectedRoute role="member">
-            <Layout navItems={memberNav} />
+            <Layout navItems={memberNav} bottomNav />
           </ProtectedRoute>
         }
       >
