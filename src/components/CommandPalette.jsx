@@ -10,8 +10,13 @@ import {
   PlusCircle,
   Settings as SettingsIcon,
   CornerDownLeft,
+  ChevronRight,
+  ArrowLeft,
+  Check,
 } from 'lucide-react'
-import { fetchBrandRows } from '../lib/data'
+import { fetchBrandRows, updateAllocationStatus } from '../lib/data'
+import { useToast } from '../contexts/ToastContext'
+import { STATUSES } from '../constants'
 import { StatusBadge, FestBadge } from './ui'
 
 const PAGES = [
@@ -25,16 +30,20 @@ const PAGES = [
 ]
 
 /**
- * ⌘K / Ctrl+K command palette (admin): jump to any of the ~270 companies by
- * name, or to any page. Companies open their detail (or the master list when
- * not yet allocated). Mounted only while open (the hotkey lives in Layout), so
- * its transient state is always fresh — no reset effects needed.
+ * ⌘K / Ctrl+K command palette (admin). Two modes:
+ *  - search: jump to any of the ~270 companies by name, or to any page.
+ *  - status: pick a new pipeline status for an allocated company and persist it
+ *    inline (→ / "Status" button enters this mode; ← / Esc backs out).
+ * Mounted only while open (the hotkey lives in Layout), so transient state is
+ * always fresh — no reset effects needed.
  */
 export default function CommandPalette({ onClose }) {
   const navigate = useNavigate()
+  const toast = useToast()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const [brands, setBrands] = useState([])
+  const [statusFor, setStatusFor] = useState(null) // company being re-statused
   const inputRef = useRef(null)
   const listRef = useRef(null)
 
@@ -47,7 +56,33 @@ export default function CommandPalette({ onClose }) {
     return () => clearTimeout(t)
   }, [])
 
+  // Esc backs out of status mode, otherwise closes the palette.
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        if (statusFor) {
+          setStatusFor(null)
+          setActive(0)
+        } else {
+          onClose()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [statusFor, onClose])
+
   const results = useMemo(() => {
+    if (statusFor) {
+      return STATUSES.map((s) => ({
+        kind: 'status',
+        id: `s-${s.label}`,
+        label: s.label,
+        status: s.label,
+        current: s.label === statusFor.status,
+      }))
+    }
     const q = query.trim().toLowerCase()
     const pages = PAGES.filter((p) => !q || p.label.toLowerCase().includes(q)).map((p) => ({
       ...p,
@@ -60,12 +95,39 @@ export default function CommandPalette({ onClose }) {
       .slice(0, 8)
       .map((b) => ({ ...b, kind: 'company', id: `c-${b.id}` }))
     return q ? [...companies, ...pages] : [...pages, ...companies]
-  }, [query, brands])
+  }, [statusFor, query, brands])
+
+  // Enter status mode for an allocated company (seed selection to current status).
+  function enterStatus(company) {
+    if (!company?.allocationId) return
+    setStatusFor(company)
+    const idx = STATUSES.findIndex((s) => s.label === company.status)
+    setActive(idx < 0 ? 0 : idx)
+  }
+
+  async function applyStatus(status) {
+    const company = statusFor
+    onClose()
+    if (status === company.status) return
+    toast.success(`${company.name} → ${status}`)
+    try {
+      await updateAllocationStatus(company.allocationId, status)
+    } catch (e) {
+      toast.error(`Couldn't update: ${e.message}`)
+    }
+  }
 
   function run(item) {
+    if (item.kind === 'status') return applyStatus(item.status)
+    if (item.kind === 'page') {
+      onClose()
+      return navigate(item.to)
+    }
+    if (item.allocationId) {
+      onClose()
+      return navigate(`/admin/company/${item.allocationId}`)
+    }
     onClose()
-    if (item.kind === 'page') return navigate(item.to)
-    if (item.allocationId) return navigate(`/admin/company/${item.allocationId}`)
     return navigate('/admin/companies')
   }
 
@@ -76,6 +138,16 @@ export default function CommandPalette({ onClose }) {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActive((a) => Math.max(a - 1, 0))
+    } else if (e.key === 'ArrowRight' && !statusFor) {
+      const item = results[active]
+      if (item?.kind === 'company' && item.allocationId) {
+        e.preventDefault()
+        enterStatus(item)
+      }
+    } else if (e.key === 'ArrowLeft' && statusFor) {
+      e.preventDefault()
+      setStatusFor(null)
+      setActive(0)
     } else if (e.key === 'Enter') {
       e.preventDefault()
       if (results[active]) run(results[active])
@@ -92,10 +164,26 @@ export default function CommandPalette({ onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-border px-4">
-          <Search size={18} className="shrink-0 text-muted" />
+          {statusFor ? (
+            <button
+              onClick={() => {
+                setStatusFor(null)
+                setActive(0)
+                inputRef.current?.focus()
+              }}
+              className="shrink-0 text-muted transition-colors hover:text-ink"
+              title="Back"
+              aria-label="Back to search"
+            >
+              <ArrowLeft size={18} />
+            </button>
+          ) : (
+            <Search size={18} className="shrink-0 text-muted" />
+          )}
           <input
             ref={inputRef}
-            value={query}
+            value={statusFor ? `Set status · ${statusFor.name}` : query}
+            readOnly={Boolean(statusFor)}
             onChange={(e) => {
               setQuery(e.target.value)
               setActive(0)
@@ -115,38 +203,97 @@ export default function CommandPalette({ onClose }) {
               No matches for “{query}”.
             </li>
           )}
-          {results.map((item, i) => {
-            const Icon = item.kind === 'page' ? item.icon : Building2
-            return (
+
+          {/* Status-mode picker */}
+          {statusFor &&
+            results.map((item, i) => (
               <li key={item.id}>
                 <button
                   onMouseEnter={() => setActive(i)}
                   onClick={() => run(item)}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
-                    i === active ? 'bg-accent-soft text-ink' : 'text-muted hover:bg-white/5'
+                    i === active ? 'bg-accent-soft' : 'hover:bg-white/5'
                   }`}
                 >
-                  <Icon size={16} className="shrink-0 text-accent" />
-                  <span className="min-w-0 flex-1 truncate font-medium text-ink">
-                    {item.label || item.name}
-                  </span>
-                  {item.kind === 'company' && (
-                    <span className="flex shrink-0 items-center gap-1.5">
-                      <FestBadge fest={item.fest || item.festTag} />
-                      <StatusBadge status={item.allocated ? item.status : 'Not Started'} />
+                  <StatusBadge status={item.status} />
+                  <span className="flex-1" />
+                  {item.current && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted">
+                      <Check size={13} /> current
                     </span>
                   )}
-                  {item.kind === 'page' && (
-                    <span className="shrink-0 text-xs text-muted">Page</span>
-                  )}
-                  {i === active && (
+                  {i === active && !item.current && (
                     <CornerDownLeft size={14} className="shrink-0 text-muted" />
                   )}
                 </button>
               </li>
-            )
-          })}
+            ))}
+
+          {/* Search-mode results */}
+          {!statusFor &&
+            results.map((item, i) => {
+              const Icon = item.kind === 'page' ? item.icon : Building2
+              const canStatus = item.kind === 'company' && item.allocationId
+              return (
+                <li key={item.id}>
+                  <div
+                    onMouseEnter={() => setActive(i)}
+                    className={`flex items-center gap-1 rounded-xl pr-2 transition-colors ${
+                      i === active ? 'bg-accent-soft' : 'hover:bg-white/5'
+                    }`}
+                  >
+                    <button
+                      onClick={() => run(item)}
+                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left text-sm"
+                    >
+                      <Icon size={16} className="shrink-0 text-accent" />
+                      <span className="min-w-0 flex-1 truncate font-medium text-ink">
+                        {item.label || item.name}
+                      </span>
+                      {item.kind === 'company' && (
+                        <span className="flex shrink-0 items-center gap-1.5">
+                          <FestBadge fest={item.fest || item.festTag} />
+                          <StatusBadge status={item.allocated ? item.status : 'Not Started'} />
+                        </span>
+                      )}
+                      {item.kind === 'page' && (
+                        <span className="shrink-0 text-xs text-muted">Page</span>
+                      )}
+                    </button>
+                    {canStatus ? (
+                      <button
+                        onClick={() => enterStatus(item)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-white/10 hover:text-ink"
+                        title="Set status (→)"
+                      >
+                        Status <ChevronRight size={13} />
+                      </button>
+                    ) : (
+                      i === active && (
+                        <CornerDownLeft size={14} className="mr-1 shrink-0 text-muted" />
+                      )
+                    )}
+                  </div>
+                </li>
+              )
+            })}
         </ul>
+
+        <div className="flex items-center gap-4 border-t border-border px-4 py-2 text-[11px] text-muted">
+          <span className="inline-flex items-center gap-1">
+            <CornerDownLeft size={12} /> open
+          </span>
+          {statusFor ? (
+            <span className="inline-flex items-center gap-1">
+              <ArrowLeft size={12} /> back
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1">
+              <ChevronRight size={12} /> set status
+            </span>
+          )}
+          <span className="ml-auto">↑↓ to navigate</span>
+        </div>
       </div>
     </div>
   )
