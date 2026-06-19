@@ -5,12 +5,12 @@ import { useAuth } from '../../contexts/AuthContext'
 import { fetchMyAllocations } from '../../lib/data'
 import {
   PageHeader,
-  Loading,
   Banner,
   Card,
   StatusBadge,
   FestBadge,
   EmptyState,
+  SkeletonCards,
 } from '../../components/ui'
 
 export default function MyCompanies() {
@@ -35,7 +35,14 @@ export default function MyCompanies() {
     return Object.entries(g).sort((a, b) => a[0].localeCompare(b[0]))
   }, [mine])
 
-  if (loading) return <Loading />
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title="My Companies" subtitle="Loading your brands…" />
+        <SkeletonCards count={6} />
+      </div>
+    )
+  }
 
   return (
     <div>

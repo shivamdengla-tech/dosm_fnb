@@ -6,7 +6,6 @@ import { fetchBrandRows } from '../../lib/data'
 import { CATEGORIES, STATUS_LABELS } from '../../constants'
 import {
   PageHeader,
-  Loading,
   Banner,
   Button,
   Modal,
@@ -15,6 +14,7 @@ import {
   Select,
   StatusBadge,
   FestBadge,
+  SkeletonTable,
 } from '../../components/ui'
 import DataTable from '../../components/DataTable'
 
@@ -93,7 +93,14 @@ export default function AllCompanies() {
     load()
   }
 
-  if (loading) return <Loading />
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title="All Companies" subtitle="Loading the master list…" />
+        <SkeletonTable rows={10} cols={6} />
+      </div>
+    )
+  }
 
   const memberOptions = [
     ...new Set(rows.map((r) => r.memberName).filter(Boolean)),

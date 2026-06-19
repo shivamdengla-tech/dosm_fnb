@@ -5,10 +5,10 @@ import { fetchBrandRows } from '../../lib/data'
 import { CATEGORIES, STATUSES, FESTS } from '../../constants'
 import {
   PageHeader,
-  Loading,
   Banner,
   StatusBadge,
   FestBadge,
+  SkeletonTable,
 } from '../../components/ui'
 import DataTable from '../../components/DataTable'
 
@@ -69,7 +69,14 @@ export default function ProgressBoard() {
     [rows, statusFilter],
   )
 
-  if (loading) return <Loading />
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title="Progress Board" subtitle="Live status of every brand across the team" />
+        <SkeletonTable rows={10} cols={6} />
+      </div>
+    )
+  }
 
   const memberOptions = [...new Set(rows.map((r) => r.memberName).filter(Boolean))].sort()
 

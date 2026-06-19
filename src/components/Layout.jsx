@@ -19,8 +19,9 @@ export default function Layout({ navItems }) {
         onClose={() => setMenuOpen(false)}
       />
 
-      {/* Content shifts right by the collapsed-rail width on desktop. */}
-      <div className="flex min-h-screen flex-col md:pl-16">
+      {/* Content reserves the collapsed-rail width on desktop, and is pushed
+          further right (never overlaid) while the sidebar is hover-expanded. */}
+      <div className="flex min-h-screen flex-col transition-[padding] duration-200 ease-out md:pl-16 md:peer-hover:pl-[220px]">
         <Topbar onMenu={() => setMenuOpen(true)} />
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />

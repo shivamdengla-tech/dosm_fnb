@@ -149,6 +149,85 @@ export function Loading({ label = 'Loading…' }) {
   )
 }
 
+/** A single shimmering placeholder block. */
+export function Skeleton({ className = '', style }) {
+  return <span className={`skeleton block rounded-lg ${className}`} style={style} />
+}
+
+/** Row of stat-tile skeletons (matches the StatTile grid). */
+export function SkeletonStats({ count = 4 }) {
+  const cols = count >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'
+  return (
+    <div className={`grid grid-cols-2 gap-4 ${cols}`}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} className="p-5">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="mt-3 h-8 w-12" />
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+/** Card-wrapped chart placeholder. */
+export function SkeletonChart({ height = 280, title = true }) {
+  return (
+    <Card className="p-5">
+      {title && <Skeleton className="mb-4 h-4 w-40" />}
+      <Skeleton className="w-full rounded-xl" style={{ height }} />
+    </Card>
+  )
+}
+
+/** Grid of generic card skeletons. */
+export function SkeletonCards({ count = 6 }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} className="p-5">
+          <Skeleton className="h-4 w-2/3" />
+          <div className="mt-4 flex gap-2">
+            <Skeleton className="h-6 w-16 rounded-full" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+/** Table skeleton with a faux toolbar — matches DataTable's footprint. */
+export function SkeletonTable({ rows = 8, cols = 5 }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Skeleton className="h-10 flex-1 rounded-xl sm:min-w-[220px]" />
+        <Skeleton className="h-10 w-full rounded-xl sm:w-40" />
+        <Skeleton className="h-10 w-full rounded-xl sm:w-40" />
+      </div>
+      <Card className="overflow-hidden p-0">
+        <div className="border-b border-border px-4 py-3">
+          <Skeleton className="h-3 w-24" />
+        </div>
+        {Array.from({ length: rows }).map((_, r) => (
+          <div
+            key={r}
+            className="flex items-center gap-4 border-b border-border/60 px-4 py-3.5 last:border-0"
+          >
+            {Array.from({ length: cols }).map((_, c) => (
+              <Skeleton
+                key={c}
+                className="h-4"
+                style={{ width: c === 0 ? '28%' : `${Math.max(10, 18 - c * 2)}%` }}
+              />
+            ))}
+          </div>
+        ))}
+      </Card>
+    </div>
+  )
+}
+
 /** Empty-state block. */
 export function EmptyState({ icon: Icon, title, hint }) {
   return (

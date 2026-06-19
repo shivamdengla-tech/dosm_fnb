@@ -64,27 +64,17 @@ export default function MemberDashboard() {
   if (loading) return <Loading />
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there'
-  const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  })
 
   return (
     <div className="space-y-6">
       {error && <Banner kind="error">{error}</Banner>}
 
-      {/* Row 1 — Greeting */}
-      <Card className="greeting-gradient relative overflow-hidden p-6 sm:p-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-extrabold text-white sm:text-3xl">
-              {greetingWord()}, {firstName} 👋
-            </h1>
-            <p className="mt-1 text-sm text-indigo-100/80">Your brand pipeline at a glance</p>
-          </div>
-          <span className="text-sm font-medium text-indigo-100/70">{today}</span>
-        </div>
+      {/* Row 1 — Greeting (compact) */}
+      <Card className="greeting-gradient relative overflow-hidden p-5 sm:p-6">
+        <h1 className="text-xl font-extrabold text-white sm:text-2xl">
+          {greetingWord()}, {firstName} 👋
+        </h1>
+        <p className="mt-1 text-sm text-indigo-100/80">Your brand pipeline at a glance</p>
       </Card>
 
       {/* Row 2 — Stat tiles */}
