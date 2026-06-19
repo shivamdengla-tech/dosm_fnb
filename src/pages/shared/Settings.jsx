@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Save, KeyRound } from 'lucide-react'
+import { Save, KeyRound, Mail, ShieldCheck } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import {
   PageHeader,
   Card,
@@ -12,8 +13,20 @@ import {
   Input,
 } from '../../components/ui'
 
+function initials(name = '') {
+  return (
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase())
+      .join('') || '?'
+  )
+}
+
 export default function Settings() {
   const { user, profile, refreshProfile } = useAuth()
+  const toast = useToast()
 
   const [fullName, setFullName] = useState(profile?.full_name || '')
   const [savingName, setSavingName] = useState(false)
@@ -37,6 +50,7 @@ export default function Settings() {
     if (error) return setNameMsg({ kind: 'error', text: error.message })
     await refreshProfile()
     setNameMsg({ kind: 'success', text: 'Profile updated.' })
+    toast.success('Profile updated')
   }
 
   async function savePw(e) {
@@ -51,13 +65,36 @@ export default function Settings() {
     setPw('')
     setPw2('')
     setPwMsg({ kind: 'success', text: 'Password changed.' })
+    toast.success('Password changed')
   }
 
   return (
     <div>
       <PageHeader title="Settings" subtitle="Manage your profile and password" />
 
-      <div className="grid max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
+      {/* Identity strip — anchors the page so the forms don't float in black */}
+      <Card className="mb-6 max-w-4xl p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl gradient-accent text-lg font-bold text-white shadow-[0_0_16px_rgba(99,102,241,0.5)]">
+            {initials(profile?.full_name)}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-lg font-bold text-ink">
+              {profile?.full_name || 'User'}
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+              <span className="inline-flex items-center gap-1.5">
+                <Mail size={14} /> {user?.email}
+              </span>
+              <span className="inline-flex items-center gap-1.5 capitalize">
+                <ShieldCheck size={14} /> {profile?.role}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2">
         <Card className="p-6">
           <CardTitle>Profile</CardTitle>
           <form onSubmit={saveName} className="space-y-4">

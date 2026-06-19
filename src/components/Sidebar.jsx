@@ -33,7 +33,7 @@ export default function Sidebar({ navItems, open, onClose }) {
       )}
 
       <aside
-        className={`group fixed inset-y-0 left-0 z-40 flex w-[220px] flex-col overflow-hidden border-r border-border bg-[#0d1117]
+        className={`group peer fixed inset-y-0 left-0 z-40 flex w-[220px] flex-col overflow-hidden border-r border-border bg-[#0d1117]
           transition-[width,transform] duration-200 ease-out
           md:w-16 md:translate-x-0 md:hover:w-[220px] md:hover:shadow-glow
           ${open ? 'translate-x-0' : '-translate-x-full'}`}

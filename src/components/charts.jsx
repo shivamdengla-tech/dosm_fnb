@@ -14,7 +14,7 @@ import {
   Legend,
 } from 'recharts'
 import { EmptyState } from './ui'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, GitBranch } from 'lucide-react'
 
 const ACCENT = '#6366f1'
 const AXIS = '#64748b'
@@ -111,6 +111,71 @@ export function HorizontalBar({ data, height = 280, colored = false }) {
         </Bar>
       </BarChart>
     </ResponsiveContainer>
+  )
+}
+
+/**
+ * Pipeline as a single labelled, segmented bar + a full legend with counts.
+ * Replaces the degenerate horizontal funnel when most brands are "Not Started":
+ * every status is always readable in the legend (label + colour + count), and
+ * non-zero segments get a minimum width so none become invisible slivers.
+ *
+ * data: [{ name, count, color }]
+ */
+export function PipelineBar({ data, emptyHint }) {
+  const total = data.reduce((s, d) => s + d.count, 0)
+  if (!total) {
+    return (
+      <EmptyState
+        icon={GitBranch}
+        title="Pipeline is empty"
+        hint={emptyHint || 'Your pipeline fills in as the team logs calls.'}
+      />
+    )
+  }
+  const segments = data.filter((d) => d.count > 0)
+  return (
+    <div>
+      <div className="flex h-6 w-full overflow-hidden rounded-full bg-white/5 ring-1 ring-white/5">
+        {segments.map((d) => {
+          const pct = (d.count / total) * 100
+          return (
+            <div
+              key={d.name}
+              className="flex items-center justify-center text-[10px] font-bold text-white/95 transition-all duration-500"
+              style={{
+                width: `${pct}%`,
+                minWidth: 22,
+                backgroundColor: d.color,
+                boxShadow: `inset 0 0 0 1px rgba(0,0,0,0.15)`,
+              }}
+              title={`${d.name}: ${d.count} (${Math.round(pct)}%)`}
+            >
+              {pct >= 8 ? d.count : ''}
+            </div>
+          )
+        })}
+      </div>
+
+      <ul className="mt-5 grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-2">
+        {data.map((d) => {
+          const pct = total ? Math.round((d.count / total) * 100) : 0
+          return (
+            <li key={d.name} className="flex items-center gap-2 text-sm">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: d.color, boxShadow: `0 0 6px ${d.color}88` }}
+              />
+              <span className="min-w-0 flex-1 truncate text-muted">{d.name}</span>
+              <span className="shrink-0 font-bold tabular-nums text-ink">{d.count}</span>
+              <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted">
+                {pct}%
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 

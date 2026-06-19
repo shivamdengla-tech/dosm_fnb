@@ -1,4 +1,4 @@
-import { Menu, LogOut } from 'lucide-react'
+import { Menu, LogOut, Search } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { APP_NAME } from '../constants'
@@ -34,7 +34,7 @@ function titleFor(pathname) {
   return APP_NAME
 }
 
-export default function Topbar({ onMenu }) {
+export default function Topbar({ onMenu, onCommand }) {
   const { profile, signOut } = useAuth()
   const { pathname } = useLocation()
   const today = new Date().toLocaleDateString('en-IN', {
@@ -59,6 +59,19 @@ export default function Topbar({ onMenu }) {
       </p>
 
       <div className="ml-auto flex items-center gap-3">
+        {onCommand && (
+          <button
+            onClick={onCommand}
+            className="hidden items-center gap-2 rounded-xl border border-border bg-white/5 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-white/10 hover:text-ink sm:flex"
+            title="Search (⌘K)"
+          >
+            <Search size={14} />
+            <span>Search…</span>
+            <kbd className="rounded border border-border bg-white/5 px-1 text-[10px] font-semibold">
+              ⌘K
+            </kbd>
+          </button>
+        )}
         <span className="hidden rounded-full border border-border bg-white/5 px-3 py-1.5 text-xs font-medium text-muted sm:inline-block">
           {today}
         </span>

@@ -10,8 +10,18 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 import { fetchBrandRows, fetchRecentCallLogs, callsPerDay } from '../../lib/data'
 import { STATUSES, FESTS, FEST_META } from '../../constants'
-import { StatTile, Card, CardTitle, Loading, Banner, StatusBadge, EmptyState } from '../../components/ui'
-import { HorizontalBar, AreaTrend } from '../../components/charts'
+import {
+  StatTile,
+  Card,
+  CardTitle,
+  Banner,
+  StatusBadge,
+  EmptyState,
+  Skeleton,
+  SkeletonStats,
+  SkeletonChart,
+} from '../../components/ui'
+import { HorizontalBar, AreaTrend, PipelineBar } from '../../components/charts'
 import { Activity } from 'lucide-react'
 
 const CONFIRMED_PLUS = ['Confirmed', 'MOU Sent', 'MOU Signed']
@@ -122,32 +132,39 @@ export default function AdminDashboard() {
 
   const callsData = useMemo(() => callsPerDay(logs, 14), [logs])
 
-  if (loading) return <Loading />
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Card className="greeting-gradient p-5 sm:p-6">
+          <Skeleton className="h-7 w-56 bg-white/10" />
+          <Skeleton className="mt-2 h-4 w-44 bg-white/10" />
+        </Card>
+        <SkeletonStats count={5} />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SkeletonChart height={340} />
+          <SkeletonChart height={200} />
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SkeletonChart height={320} />
+          <SkeletonChart height={320} />
+        </div>
+        <SkeletonChart height={300} />
+      </div>
+    )
+  }
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there'
-  const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  })
 
   return (
     <div className="space-y-6">
       {error && <Banner kind="error">{error}</Banner>}
 
-      {/* Row 1 — Greeting */}
-      <Card className="greeting-gradient relative overflow-hidden p-6 sm:p-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-extrabold text-white sm:text-3xl">
-              {greetingWord()}, {firstName} 👋
-            </h1>
-            <p className="mt-1 text-sm text-indigo-100/80">
-              Here's your FnB pipeline overview
-            </p>
-          </div>
-          <span className="text-sm font-medium text-indigo-100/70">{today}</span>
-        </div>
+      {/* Row 1 — Greeting (compact) */}
+      <Card className="greeting-gradient relative overflow-hidden p-5 sm:p-6">
+        <h1 className="text-xl font-extrabold text-white sm:text-2xl">
+          {greetingWord()}, {firstName} 👋
+        </h1>
+        <p className="mt-1 text-sm text-indigo-100/80">Here's your FnB pipeline overview</p>
       </Card>
 
       {/* Row 2 — Stat tiles */}
@@ -162,8 +179,8 @@ export default function AdminDashboard() {
       {/* Row 3 — Pipeline funnel + Fest readiness */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="p-5">
-          <CardTitle>Pipeline funnel</CardTitle>
-          <HorizontalBar data={pipelineData} colored height={340} />
+          <CardTitle>Pipeline</CardTitle>
+          <PipelineBar data={pipelineData} />
         </Card>
 
         <Card className="p-5">

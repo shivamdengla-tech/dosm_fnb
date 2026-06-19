@@ -1,5 +1,6 @@
 import { getStatus, FEST_META } from '../constants'
-import { X } from 'lucide-react'
+import { contactLinks, followUpState } from '../lib/data'
+import { X, Phone, MessageCircle, Mail, CalendarClock } from 'lucide-react'
 
 /** Page title + optional subtitle + right-aligned action slot. */
 export function PageHeader({ title, subtitle, children }) {
@@ -91,6 +92,92 @@ export function StatusBadge({ status, className = '' }) {
   )
 }
 
+/**
+ * One-tap contact actions for a POC: dial, WhatsApp, email.
+ * Renders only the links that are usable. Clicks don't bubble (so it can sit
+ * inside a clickable row/card without triggering navigation).
+ */
+export function ContactLinks({ phone, email, name, size = 18, className = '' }) {
+  const links = contactLinks({ phone, email })
+  if (!links.tel && !links.whatsapp && !links.email) return null
+  const who = name ? ` ${name}` : ''
+  const stop = (e) => e.stopPropagation()
+  const base =
+    'grid place-items-center rounded-lg border border-border bg-white/5 transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0'
+  const box = size >= 18 ? 'h-9 w-9' : 'h-8 w-8'
+  return (
+    <div className={`flex items-center gap-1.5 ${className}`}>
+      {links.tel && (
+        <a
+          href={links.tel}
+          onClick={stop}
+          title={`Call${who}`}
+          aria-label={`Call${who}`}
+          className={`${base} ${box} text-sky-300 hover:bg-sky-500/15 hover:text-sky-200`}
+        >
+          <Phone size={size - 2} />
+        </a>
+      )}
+      {links.whatsapp && (
+        <a
+          href={links.whatsapp}
+          onClick={stop}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`WhatsApp${who}`}
+          aria-label={`WhatsApp${who}`}
+          className={`${base} ${box} text-emerald-300 hover:bg-emerald-500/15 hover:text-emerald-200`}
+        >
+          <MessageCircle size={size - 2} />
+        </a>
+      )}
+      {links.email && (
+        <a
+          href={links.email}
+          onClick={stop}
+          title={`Email${who}`}
+          aria-label={`Email${who}`}
+          className={`${base} ${box} text-indigo-300 hover:bg-indigo-500/15 hover:text-indigo-200`}
+        >
+          <Mail size={size - 2} />
+        </a>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Amber (due today) / red (overdue) follow-up pill. Renders nothing when the
+ * follow-up is in the future or absent (unless `showUpcoming`).
+ */
+export function FollowUpBadge({ date, showUpcoming = false, className = '' }) {
+  const state = followUpState(date)
+  if (!state) return null
+  if (state === 'upcoming' && !showUpcoming) return null
+  const palette = {
+    overdue: { color: '#ef4444', label: 'Overdue' },
+    today: { color: '#f59e0b', label: 'Due today' },
+    upcoming: { color: '#9ca3af', label: fmtFollowUp(date) },
+  }[state]
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${className}`}
+      style={{
+        backgroundColor: `${palette.color}1f`,
+        color: palette.color,
+        boxShadow: state === 'overdue' ? `0 0 10px ${palette.color}55` : undefined,
+      }}
+    >
+      <CalendarClock size={12} />
+      {palette.label}
+    </span>
+  )
+}
+
+function fmtFollowUp(date) {
+  return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
+
 /** Coloured pill for a fest tag (Waves / Quark / Spree / All). */
 export function FestBadge({ fest, className = '' }) {
   const meta = FEST_META[fest] || FEST_META.All
@@ -145,6 +232,85 @@ export function Loading({ label = 'Loading…' }) {
     <div className="flex items-center justify-center py-20 text-muted">
       <span className="mr-3 h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       {label}
+    </div>
+  )
+}
+
+/** A single shimmering placeholder block. */
+export function Skeleton({ className = '', style }) {
+  return <span className={`skeleton block rounded-lg ${className}`} style={style} />
+}
+
+/** Row of stat-tile skeletons (matches the StatTile grid). */
+export function SkeletonStats({ count = 4 }) {
+  const cols = count >= 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'
+  return (
+    <div className={`grid grid-cols-2 gap-4 ${cols}`}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} className="p-5">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="mt-3 h-8 w-12" />
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+/** Card-wrapped chart placeholder. */
+export function SkeletonChart({ height = 280, title = true }) {
+  return (
+    <Card className="p-5">
+      {title && <Skeleton className="mb-4 h-4 w-40" />}
+      <Skeleton className="w-full rounded-xl" style={{ height }} />
+    </Card>
+  )
+}
+
+/** Grid of generic card skeletons. */
+export function SkeletonCards({ count = 6 }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} className="p-5">
+          <Skeleton className="h-4 w-2/3" />
+          <div className="mt-4 flex gap-2">
+            <Skeleton className="h-6 w-16 rounded-full" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+/** Table skeleton with a faux toolbar — matches DataTable's footprint. */
+export function SkeletonTable({ rows = 8, cols = 5 }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Skeleton className="h-10 flex-1 rounded-xl sm:min-w-[220px]" />
+        <Skeleton className="h-10 w-full rounded-xl sm:w-40" />
+        <Skeleton className="h-10 w-full rounded-xl sm:w-40" />
+      </div>
+      <Card className="overflow-hidden p-0">
+        <div className="border-b border-border px-4 py-3">
+          <Skeleton className="h-3 w-24" />
+        </div>
+        {Array.from({ length: rows }).map((_, r) => (
+          <div
+            key={r}
+            className="flex items-center gap-4 border-b border-border/60 px-4 py-3.5 last:border-0"
+          >
+            {Array.from({ length: cols }).map((_, c) => (
+              <Skeleton
+                key={c}
+                className="h-4"
+                style={{ width: c === 0 ? '28%' : `${Math.max(10, 18 - c * 2)}%` }}
+              />
+            ))}
+          </div>
+        ))}
+      </Card>
     </div>
   )
 }
