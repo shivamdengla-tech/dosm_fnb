@@ -28,14 +28,23 @@ Two roles:
 ```
 src/
   lib/supabase.js      shared browser client + makeIsolatedClient() (session-isolated signUp)
-  lib/data.js          all shared Supabase fetchers + pure helpers (flattenBrand, callsPerDay)
+  lib/data.js          shared Supabase fetchers + write helpers (logCall,
+                       updateAllocationStatus, fetchMyQueue) + pure helpers
+                       (flattenBrand, callsPerDay, normalizePhone/contactLinks,
+                       followUpState, daysSince, buildCallQueue)
   constants.js         STATUSES, FESTS, FEST_META, CATEGORIES, SPREE_ONLY_CATEGORIES, app strings
   contexts/AuthContext.jsx   session + profile (role) state; signIn/signOut/refreshProfile
+  contexts/ToastContext.jsx  toast stack; useToast() → toast.success/error/info(msg)
   components/
     ui.jsx             Card, Button, Input/Select/Textarea, StatusBadge, FestBadge, StatTile,
-                       Modal, Banner, PageHeader, Loading, EmptyState, Field, CardTitle
-    charts.jsx         CategoricalBar, HorizontalBar, Donut, AreaTrend, CompletionRing
+                       Modal, Banner, PageHeader, Loading, EmptyState, Field, CardTitle,
+                       ContactLinks (tel/wa.me/mailto), FollowUpBadge, Skeleton* loaders
+    charts.jsx         CategoricalBar, HorizontalBar, PipelineBar, Donut, AreaTrend, CompletionRing
     DataTable.jsx      searchable + multi-filter table
+    LogCallSheet.jsx   fast modal to log a call outcome (+ optional follow-up) anywhere
+    KanbanBoard.jsx    drag-to-change-status pipeline board (Progress Board "Board" view)
+    CommandPalette.jsx ⌘K / Ctrl+K jump-to-company / jump-to-page (admin)
+    BottomNav.jsx      mobile tab bar for members (md:hidden)
     Sidebar / Topbar / Layout / Footer / ProtectedRoute
   pages/
     Login.jsx
@@ -54,7 +63,13 @@ brands.csv             seed data (name, category, fest_tag) — 270 rows
 - `allocations(id, brand_id, member_id, fest, status)` — `fest` ∈ Waves/Quark/Spree;
   `status` is one of the pipeline statuses below. **This is where a brand's current status lives.**
 - `call_logs(id, allocation_id, member_id, poc_name, poc_number, poc_email, status, notes,
-  quantity, skus, delivery_date, stall_space, created_at)` — **append-only** snapshot per call.
+  quantity, skus, delivery_date, stall_space, next_follow_up, created_at)` — **append-only**
+  snapshot per call. `next_follow_up` is added by `migrations/0001_add_next_follow_up.sql`
+  (run it in Supabase). Reads use `select('*')` and writes only send the column when a date
+  is set, so the app keeps working before the migration is applied.
+
+**Schema changes ship as `.sql` files in `migrations/`** for the user to run manually — the app
+never alters the DB itself.
 
 **Pipeline statuses** (ordered; colours in `constants.js > STATUSES`):
 Not Started · First Call Done · Follow Up · Unresponsive · Denied · Confirmed · MOU Sent · MOU Signed.
@@ -102,9 +117,17 @@ is the server-side backstop. Never weaken RLS to fix a query — fix the query.
 
 ## Key design decisions
 
-1. **Status lives on `allocations`; `call_logs` is append-only.** Saving a call in Company Detail
-   inserts a `call_logs` snapshot **and** updates `allocations.status` (so boards/charts stay in sync).
-   Un-allocated brands render as "Not Started / Untouched".
+1. **Status lives on `allocations`; `call_logs` is append-only.** Logging a call (Company Detail or the
+   `LogCallSheet`) goes through `logCall()` in `lib/data.js`, which inserts a `call_logs` snapshot **and**
+   updates `allocations.status` (so boards/charts stay in sync). The Kanban board's drag-to-change-status
+   is the one exception: it calls `updateAllocationStatus()` (status only, no snapshot) as a quick admin
+   correction. Un-allocated brands render as "Not Started / Untouched".
+7. **Follow-ups drive action.** Each call snapshot can carry `next_follow_up`; the latest one per
+   allocation surfaces as a `FollowUpBadge` (amber = due today, red = overdue). `buildCallQueue()` powers
+   the member "Up Next" list — due/overdue → "going cold" (in Follow Up, untouched 3+ days) → untouched —
+   and the admin Progress Board flags the same signals.
+8. **Toasts + optimistic UI.** Writes (log call, Kanban move, settings) update local state immediately and
+   confirm with a toast (`useToast()`); failures revert and surface an error toast.
 2. **`flattenBrand` (lib/data.js)** collapses a brand + its allocations into one display row carrying
    its primary allocation (`allocationId`, `fest`, `status`, `memberName`). Used across admin tables.
 3. **Member creation is client-side and session-isolated.** `makeIsolatedClient()` (persistSession
